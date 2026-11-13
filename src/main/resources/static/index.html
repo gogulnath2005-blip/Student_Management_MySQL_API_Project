@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>🎓 StudentHub</h2>
+        <p class="menu-title">MAIN MENU</p>
+        <a href="#" class="active">Dashboard</a>
+        <a href="#student-form">Add Student</a>
+        <a href="#student-list">Student Records</a>
+    </div>
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h1>Student Dashboard</h1>
+                <p>Manage your student records easily.</p>
+            </div>
+            <div class="admin">Admin Panel</div>
+        </header>
+
+        <section class="stats">
+            <div class="stat-card">
+                <span>Total Students</span>
+                <h2 id="totalStudents">0</h2>
+            </div>
+            <div class="stat-card">
+                <span>System Status</span>
+                <h2 id="serverStatus">Checking...</h2>
+            </div>
+        </section>
+
+        <section class="form-card" id="student-form">
+            <h2 id="formTitle">Add New Student</h2>
+
+            <form id="studentForm">
+                <input type="hidden" id="studentId">
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Student Name</label>
+                        <input type="text" id="name"
+                               placeholder="Enter student name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="email"
+                               placeholder="Enter email address" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Course</label>
+                        <input type="text" id="course"
+                               placeholder="Enter course" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="age"
+                               placeholder="Enter age" min="1" required>
+                    </div>
+                </div>
+
+                <div class="form-buttons">
+                    <button type="submit" id="submitBtn">
+                        Add Student
+                    </button>
+                    <button type="button" class="cancel-btn"
+                            id="cancelBtn" hidden>
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="table-card" id="student-list">
+            <div class="table-heading">
+                <div>
+                    <h2>Student Records</h2>
+                    <p>View and manage all registered students.</p>
+                </div>
+
+                <input type="search" id="searchInput"
+                       placeholder="Search students...">
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Course</th>
+                            <th>Age</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTable">
+                        <tr>
+                            <td colspan="6">Loading students...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <p id="message" role="status"></p>
+
+        <footer>
+            © 2026 StudentHub | Student Management System
+        </footer>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
