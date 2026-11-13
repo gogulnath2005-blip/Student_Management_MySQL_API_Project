@@ -1,72 +1,133 @@
 
+// ======================================
+// STUDENTHUB - STUDENT MANAGEMENT SYSTEM
+// ======================================
+
+// API CONFIGURATION
 const API_URL = "/api/students";
 
+// DOM ELEMENTS
 const form = document.getElementById("studentForm");
 const table = document.getElementById("studentTable");
 const message = document.getElementById("message");
 
-let students = [];
+const submitBtn = document.getElementById("submitBtn");
+const cancelBtn = document.getElementById("cancelBtn");
 
-// Show messages
+let students = [];
+let searchValue = "";
+
+// SHOW MESSAGE
 function showMessage(text, success = true) {
+
     message.textContent = text;
-    message.style.color = success ? "green" : "red";
+
+    message.style.color = success ? "#16a085" : "#e74c3c";
+
+    message.classList.remove("message-animation");
+
+    void message.offsetWidth;
+
+    message.classList.add("message-animation");
 }
 
-// Load all students
-async function loadStudents() {
-    try {
-        document.getElementById("serverStatus").textContent =
-            "Checking...";
+// API REQUEST HANDLER
+async function apiRequest(url, options = {}) {
 
-        const response = await fetch(API_URL);
+    const response = await fetch(url, options);
 
-        if (!response.ok) {
-            throw new Error("Unable to fetch students");
+    if (!response.ok) {
+
+        let errorMessage = `Request failed: ${response.status}`;
+
+        try {
+            const errorData = await response.json();
+
+            if (errorData.message) {
+                errorMessage = errorData.message;
+            }
+        } catch {
+            // Keep the default error message.
         }
 
-        students = await response.json();
+        throw new Error(errorMessage);
+    }
 
-        displayStudents(students);
+    if (response.status === 204) {
+        return null;
+    }
+
+    return response.json();
+}
+
+// LOAD ALL STUDENTS
+async function loadStudents() {
+
+    const status = document.getElementById("serverStatus");
+
+    status.textContent = "Checking...";
+
+    try {
+
+        students = await apiRequest(API_URL);
+
+        if (!Array.isArray(students)) {
+            throw new Error("Unexpected API response format.");
+        }
+
+        status.textContent = "Connected";
+        status.style.color = "#16a085";
 
         document.getElementById("totalStudents").textContent =
             students.length;
 
-        document.getElementById("serverStatus").textContent =
-            "Connected";
+        displayStudents(students);
 
     } catch (error) {
-        document.getElementById("serverStatus").textContent =
-            "Offline";
+
+        console.error("API Error:", error);
+
+        status.textContent = "Offline";
+        status.style.color = "#e74c3c";
 
         table.innerHTML = `
             <tr>
                 <td colspan="6">
-                    Cannot connect to Spring Boot API.
-                    Check your backend and API URL.
+                    Unable to connect to Student API.
+                    Please check your backend connection.
                 </td>
             </tr>
         `;
+
+        document.getElementById("totalStudents").textContent = "0";
 
         showMessage(error.message, false);
     }
 }
 
-// Display student records
+// DISPLAY STUDENTS
 function displayStudents(data) {
+
     table.innerHTML = "";
 
     if (data.length === 0) {
+
         table.innerHTML = `
             <tr>
-                <td colspan="6">No students found.</td>
+                <td colspan="6">
+                    No student records found.
+                </td>
             </tr>
         `;
+
         return;
     }
 
-    data.forEach(student => {
+    data.forEach((student, index) => {
+
         const row = document.createElement("tr");
+
+        row.style.animationDelay = `${index * 0.06}s`;
 
         const values = [
             student.id,
@@ -77,126 +138,227 @@ function displayStudents(data) {
         ];
 
         values.forEach(value => {
+
             const cell = document.createElement("td");
+
             cell.textContent = value ?? "";
+
             row.appendChild(cell);
         });
 
+        // ACTION BUTTONS
         const actionCell = document.createElement("td");
 
         const editButton = document.createElement("button");
-        editButton.textContent = "Edit";
+
+        editButton.textContent = "✎ Edit";
         editButton.className = "edit-btn";
-        editButton.addEventListener("click", () => editStudent(student));
+
+        editButton.addEventListener("click", () => {
+            editStudent(student);
+        });
 
         const deleteButton = document.createElement("button");
-        deleteButton.textContent = "Delete";
+
+        deleteButton.textContent = "✕ Delete";
         deleteButton.className = "delete-btn";
-        deleteButton.addEventListener("click", () =>
-            deleteStudent(student.id)
-        );
+
+        deleteButton.addEventListener("click", () => {
+            deleteStudent(student.id);
+        });
 
         actionCell.append(editButton, deleteButton);
+
         row.appendChild(actionCell);
 
         table.appendChild(row);
     });
 }
 
-// Add or update student
+// SEARCH STUDENTS
+function searchStudents() {
+
+    const filteredStudents = students.filter(student => {
+
+        return (
+
+            String(student.id).toLowerCase().includes(searchValue) ||
+
+            (student.name || "").toLowerCase().includes(searchValue) ||
+
+            (student.email || "").toLowerCase().includes(searchValue) ||
+
+            (student.course || "").toLowerCase().includes(searchValue)
+
+        );
+
+    });
+
+    displayStudents(filteredStudents);
+}
+
+document.getElementById("searchInput").addEventListener(
+    "input",
+    function () {
+
+        searchValue = this.value.trim().toLowerCase();
+
+        searchStudents();
+    }
+);
+
+// ADD OR UPDATE STUDENT
 form.addEventListener("submit", async function(event) {
+
     event.preventDefault();
 
     const id = document.getElementById("studentId").value;
 
     const student = {
+
         name: document.getElementById("name").value.trim(),
+
         email: document.getElementById("email").value.trim(),
+
         course: document.getElementById("course").value.trim(),
+
         age: Number(document.getElementById("age").value)
+
     };
 
-    if (!student.name || !student.email ||
-        !student.course || student.age < 1) {
+    if (
+        !student.name ||
+        !student.email ||
+        !student.course ||
+        !Number.isInteger(student.age) ||
+        student.age < 1
+    ) {
+
         showMessage("Please enter valid student details.", false);
+
         return;
     }
 
     const url = id ? `${API_URL}/${id}` : API_URL;
+
     const method = id ? "PUT" : "POST";
 
+    const originalText = submitBtn.innerHTML;
+
+    submitBtn.disabled = true;
+
+    submitBtn.innerHTML = "⏳ Saving...";
+
     try {
-        const response = await fetch(url, {
+
+        await apiRequest(url, {
+
             method: method,
+
             headers: {
                 "Content-Type": "application/json"
             },
+
             body: JSON.stringify(student)
+
         });
 
-        if (!response.ok) {
-            throw new Error("Unable to save student");
-        }
-
-        showMessage(id
-            ? "Student updated successfully!"
-            : "Student added successfully!"
+        showMessage(
+            id
+                ? "Student updated successfully! ✓"
+                : "Student added successfully! ✓"
         );
 
         resetForm();
+
         await loadStudents();
 
+        document.getElementById("searchInput").value = "";
+
+        searchValue = "";
+
+        showMessage(
+            id
+                ? "Student updated successfully! ✓"
+                : "Student added successfully! ✓"
+        );
+
     } catch (error) {
+
+        console.error(error);
+
         showMessage(error.message, false);
+
+    } finally {
+
+        submitBtn.disabled = false;
+
+        submitBtn.innerHTML = originalText;
     }
+
 });
 
-// Edit student
+// EDIT STUDENT
 function editStudent(student) {
+
     document.getElementById("studentId").value = student.id;
+
     document.getElementById("name").value = student.name;
+
     document.getElementById("email").value = student.email;
+
     document.getElementById("course").value = student.course;
+
     document.getElementById("age").value = student.age;
 
     document.getElementById("formTitle").textContent =
         "Update Student";
 
-    document.getElementById("submitBtn").textContent =
-        "Update Student";
+    submitBtn.innerHTML = "✎ Update Student";
 
-    document.getElementById("cancelBtn").hidden = false;
+    cancelBtn.hidden = false;
 
     document.getElementById("student-form").scrollIntoView({
-        behavior: "smooth"
+
+        behavior: "smooth",
+
+        block: "start"
+
     });
+
+    showMessage("Editing student ID: " + student.id);
 }
 
-// Delete student
+// DELETE STUDENT
 async function deleteStudent(id) {
+
     if (!confirm("Are you sure you want to delete this student?")) {
         return;
     }
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+
+        await apiRequest(`${API_URL}/${id}`, {
+
             method: "DELETE"
+
         });
 
-        if (!response.ok) {
-            throw new Error("Unable to delete student");
-        }
+        showMessage("Student deleted successfully! ✓");
 
-        showMessage("Student deleted successfully!");
         await loadStudents();
 
     } catch (error) {
+
+        console.error(error);
+
         showMessage(error.message, false);
     }
 }
 
-// Reset form
+// RESET FORM
 function resetForm() {
+
     form.reset();
 
     document.getElementById("studentId").value = "";
@@ -204,33 +366,23 @@ function resetForm() {
     document.getElementById("formTitle").textContent =
         "Add New Student";
 
-    document.getElementById("submitBtn").textContent =
-        "Add Student";
+    submitBtn.innerHTML = "<span>＋</span> Add Student";
 
-    document.getElementById("cancelBtn").hidden = true;
+    cancelBtn.hidden = true;
 }
 
-// Cancel editing
-document.getElementById("cancelBtn").addEventListener(
-    "click", resetForm
-);
+// CANCEL EDITING
+cancelBtn.addEventListener("click", () => {
 
-// Search students
-document.getElementById("searchInput").addEventListener(
-    "input", function() {
+    resetForm();
 
-        const searchValue = this.value.toLowerCase();
+    showMessage("Editing cancelled.");
 
-        const filteredStudents = students.filter(student =>
-            String(student.id).includes(searchValue) ||
-            (student.name || "").toLowerCase().includes(searchValue) ||
-            (student.email || "").toLowerCase().includes(searchValue) ||
-            (student.course || "").toLowerCase().includes(searchValue)
-        );
+});
 
-        displayStudents(filteredStudents);
-    }
-);
+// INITIALIZE APPLICATION
+document.addEventListener("DOMContentLoaded", () => {
 
-// Start application
-loadStudents();
+    loadStudents();
+
+});
